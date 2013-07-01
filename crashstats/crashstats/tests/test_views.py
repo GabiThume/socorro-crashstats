@@ -712,9 +712,8 @@ class TestViews(BaseTestViews):
         reader = csv.reader(StringIO(response.content))
         line1, line2 = reader
         eq_(line1[0], 'Rank')
-        # a failure test to #533628
         try:
-            eq_(line2[0], 1)
+            eq_(int(line2[0]), 1)
         except Exception:
             raise SkipTest
         # bytestring when exported as CSV with UTF-8 encoding
@@ -1488,6 +1487,7 @@ class TestViews(BaseTestViews):
         ok_('nsASDOMWindowEnumerator::GetNext()' in response.content)
 
         # Test that old query types are changed
+        # Test that plugin data is displayed
         response = self.client.get(url, {
             'do_query': 1,
             'product': 'SeaMonkey',
@@ -1502,6 +1502,17 @@ class TestViews(BaseTestViews):
         ok_('Plugin Name/Ver' in response.content)
         ok_('addon.dll' in response.content)
         ok_('superAddOn 1.2.3' in response.content)
+
+        # Test 'all' is an accepted value for report_type and hang_type
+        response = self.client.get(url, {
+            'do_query': 1,
+            'product': 'Firefox',
+            'hang_type': 'all',
+            'process_type': 'all',
+        })
+        eq_(response.status_code, 200)
+        ok_('table id="signatureList"' in response.content)
+        ok_('value="any" checked' in response.content)
 
         # Test defaut date
         expected = datetime.datetime.utcnow()
@@ -1528,6 +1539,39 @@ class TestViews(BaseTestViews):
         })
         eq_(response.status_code, 200)
         ok_('value="12345, 54321"' in response.content)
+
+    @mock.patch('requests.post')
+    @mock.patch('requests.get')
+    def test_query_pagination(self, rget, rpost):
+
+        def mocked_post(**options):
+            return Response('{"hits": [], "total": 0}')
+
+        def mocked_get(url, **options):
+            assert 'search/signatures' in url
+            response = ','.join('''
+                {
+                    "count": %(x)s,
+                    "signature": "sig%(x)s",
+                    "numcontent": 0,
+                    "is_windows": %(x)s,
+                    "is_linux": 0,
+                    "numplugin": 0,
+                    "is_mac": 0,
+                    "numhang": 0
+                }
+            ''' % {'x': x} for x in range(150))
+            return Response('{"hits": [%s], "total": 150}' % response)
+
+        rpost.side_effect = mocked_post
+        rget.side_effect = mocked_get
+        url = reverse('crashstats.query')
+
+        response = self.client.get(url, {'do_query': 1})
+        eq_(response.status_code, 200)
+
+        next_page_url = '%s?do_query=1&amp;page=2' % url
+        ok_(next_page_url in response.content)
 
     @mock.patch('requests.post')
     @mock.patch('requests.get')
@@ -2017,6 +2061,39 @@ class TestViews(BaseTestViews):
 
         ok_('2000-01-01T00:00:00+00:00' in response.content)
         ok_('1/01/2000 00:00 UTC' in response.content)
+
+    @mock.patch('requests.get')
+    def test_crontabber_state_json(self, rget):
+        url = reverse('crashstats.crontabber_state_json')
+
+        sample_data = {
+            "state": {
+                "slow-one": {
+                    "next_run": "2013-02-19 01:16:00.893834",
+                    "first_run": "2012-11-05 23:27:07.316347",
+                    "last_error": {
+                        "traceback": "error error error",
+                        "type": "<class 'sluggish.jobs.InternalError'>",
+                        "value": "Have already run this for 2012-12-24 23:27"
+                    },
+                    "last_run": "2013-02-09 00:16:00.893834",
+                    "last_success": "2012-12-24 22:27:07.316893",
+                    "error_count": 6,
+                    "depends_on": []
+                }
+            }
+        }
+
+        def mocked_get(**options):
+            assert 'crontabber_state' in options['url']
+            return Response(json.dumps(sample_data))
+
+        rget.side_effect = mocked_get
+
+        response = self.client.get(url)
+        ok_('application/json' in response['Content-Type'])
+        eq_(response.status_code, 200)
+        eq_(sample_data, json.loads(response.content))
 
     @mock.patch('requests.post')
     @mock.patch('requests.get')

@@ -194,7 +194,7 @@ QUERY_TYPES = (
 # This is for backward compatibility with the PHP app.
 QUERY_TYPES_MAP = {
     'exact': 'is_exactly',
-    'startswith': 'starts_with'
+    'startswith': 'starts_with',
 }
 
 # Maximum and default range of query that can be run in search
@@ -205,7 +205,7 @@ QUERY_RANGE_DEFAULT_DAYS = 14
 RANGE_UNITS = (
     'weeks',
     'days',
-    'hours'
+    'hours',
 )
 
 # process types to allow in queries
@@ -213,20 +213,22 @@ PROCESS_TYPES = (
     'any',
     'browser',
     'plugin',
-    'content'
+    'content',
+    'all',  # alias for 'any'
 )
 
 # hang types to allow in queries
 HANG_TYPES = (
     'any',
     'crash',
-    'hang-p'
+    'hang-p',
+    'all',  # alias for 'any'
 )
 
 # plugin fields to allow in queries
 PLUGIN_FIELDS = (
     'filename',
-    'name'
+    'name',
 )
 
 # this is the max length of signatures in forms
@@ -248,7 +250,7 @@ LDAP_GROUP_NAMES = ['CrashReportsAdmin']
 LDAP_GROUP_QUERIES = [
     'mail=%(mail)s,o=com,dc=mozilla',
     'mail=%(mail)s,o=org,dc=mozilla',
-    'mail=%(mail)s,o=net,dc=mozillacom',
+    'mail=%(mail)s,o=net,dc=mozilla',
 ]
 
 
@@ -276,3 +278,5 @@ CORRELATION_REPORT_TYPES = (
     'interesting-modules',
     'interesting-modules-with-versions'
 )
+
+from version import *

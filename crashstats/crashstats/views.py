@@ -331,7 +331,7 @@ def _render_topcrasher_csv(request, context, product):
                      'Versions'])
     for crash in context['tcbs']['crashes']:
 
-        writer.writerow([crash.get('currentRank', ''),
+        writer.writerow([crash.get('currentRank', '') + 1,
                          crash.get('changeInRank', ''),
                          crash.get('percentOfTotal', ''),
                          crash.get('previousPercentOfTotal', ''),
@@ -739,8 +739,6 @@ def topchangers(request, product=None, versions=None,
         for crash in tcbs['crashes']:
             if crash['changeInRank'] != 'new' and crash['signature']:
                 change = int(crash['changeInRank'])
-                if change <= 0:
-                    continue
                 changers[change].append(crash)
 
     context['topchangers'] = changers
@@ -1142,12 +1140,18 @@ def status(request, default_context=None):
         for attribute in attributes:
             stat[attribute] = utils.parse_isodate(stat[attribute])
 
+    if stats:
+        first_stat = stats[0]
+    else:
+        first_stat = None
+
     context = default_context or {}
     context.update({
         'data': stats,
-        'stat': stats[0],
+        'stat': first_stat,
         'plot_data': plot_data,
         'socorro_revision': response['socorro_revision'],
+        'socorro_crashstats_revision': settings.GIT_SHA,
         'breakpad_revision': response['breakpad_revision']
     })
     return render(request, 'crashstats/status.html', context)
@@ -1263,14 +1267,13 @@ def query(request, default_context=None):
     else:
         range_unit = settings.RANGE_UNITS[0]
 
-    if form.cleaned_data['process_type']:
-        process_type = form.cleaned_data['process_type']
-    else:
+    # 'all' is here for backwards compatibility, it's an alias of 'any'
+    process_type = form.cleaned_data['process_type']
+    if not process_type or process_type == 'all':
         process_type = settings.PROCESS_TYPES[0]
 
-    if form.cleaned_data['hang_type']:
-        hang_type = form.cleaned_data['hang_type']
-    else:
+    hang_type = form.cleaned_data['hang_type']
+    if not hang_type or hang_type == 'all':
         hang_type = settings.HANG_TYPES[0]
 
     if form.cleaned_data['plugin_field']:

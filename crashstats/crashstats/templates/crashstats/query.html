@@ -94,7 +94,7 @@
                     <span class="label">Report Process:</span>
                     <span class="radio-item">
                         <label>
-                            <input type="radio" name="process_type" value="any" {% if params.process_type == 'any' %} checked{% endif %}>
+                            <input type="radio" name="process_type" value="any"{% if params.process_type == 'any' %} checked{% endif %}>
                             Any
                         </label>
                     </span>
@@ -205,7 +205,7 @@
 {%- endif -%}.</p>
 
     {% if query.total > 0 %}
-    {{ pagination(query), current_url, current_page }}
+    {{ pagination(query, current_url, current_page) }}
 
     <table id="signatureList" class="tablesorter data-table">
         <thead>
